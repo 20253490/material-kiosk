@@ -1,4 +1,5 @@
-/* src/App.css */
+/* src/App.css (수정 완료) */
+
 /* 스크롤바를 항상 강제로 표시해서 화면이 좌우로 흔들리는 것을 막아줍니다 */
 html {
   overflow-y: scroll;
@@ -129,51 +130,54 @@ h1 {
   font-size: 1.5rem;
   font-weight: bold;
   min-width: 30px;
-  /* --- 반응형 디자인 (모바일 최적화) --- */
+} /* <--- 아까 여기에 닫는 괄호가 없어서 에러가 났던 겁니다! */
+
+
+/* --- 반응형 디자인 (모바일 최적화) --- */
 
 /* 화면 너비가 768px 이하(태블릿, 스마트폰)일 때 적용되는 규칙 */
 @media (max-width: 768px) {
   
   /* 1. 전체 여백 줄이기 */
   #root {
-    padding: 1rem; /* 2rem에서 1rem으로 축소 */
+    padding: 1rem;
   }
 
   /* 2. 제목 크기 줄이기 */
   h1 {
-    font-size: 1.5rem; /* 글씨 크기 축소 */
+    font-size: 1.5rem;
   }
 
   /* 3. 카테고리 탭 작게 만들기 */
   .category-tabs {
-    gap: 5px; /* 간격 좁히기 */
-    flex-wrap: wrap; /* 탭이 많으면 다음 줄로 넘김 */
+    gap: 5px; 
+    flex-wrap: wrap;
   }
 
   .tab-btn {
-    padding: 8px 15px; /* 버튼 뚱뚱한 것 줄이기 */
-    font-size: 0.9rem; /* 글씨 작게 */
+    padding: 8px 15px;
+    font-size: 0.9rem;
   }
 
   /* 4. 상품 목록: 모바일에서는 2개씩 보기 (가시성 확보) */
   .product-grid {
     grid-template-columns: repeat(2, 1fr) !important; /* 강제로 2열로 변경 */
-    gap: 10px; /* 상품 사이 간격 좁히기 */
+    gap: 10px;
   }
 
   /* 5. 상품 카드 내부 다이어트 */
   .product-card {
-    padding: 10px; /* 카드 안쪽 여백 줄이기 */
+    padding: 10px;
   }
 
   .product-img {
-    width: 60px; /* 이미지 크기 줄이기 */
+    width: 60px;
     height: 60px;
-    font-size: 1.5rem; /* 아이콘 크기 줄이기 */
+    font-size: 1.5rem;
   }
 
   .product-info h3 {
-    font-size: 1rem; /* 상품명 작게 */
+    font-size: 1rem;
     margin: 5px 0;
   }
 
@@ -192,5 +196,4 @@ h1 {
   .count-display {
     font-size: 1.2rem;
   }
-}
 }
