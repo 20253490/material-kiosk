@@ -129,4 +129,68 @@ h1 {
   font-size: 1.5rem;
   font-weight: bold;
   min-width: 30px;
+  /* --- 반응형 디자인 (모바일 최적화) --- */
+
+/* 화면 너비가 768px 이하(태블릿, 스마트폰)일 때 적용되는 규칙 */
+@media (max-width: 768px) {
+  
+  /* 1. 전체 여백 줄이기 */
+  #root {
+    padding: 1rem; /* 2rem에서 1rem으로 축소 */
+  }
+
+  /* 2. 제목 크기 줄이기 */
+  h1 {
+    font-size: 1.5rem; /* 글씨 크기 축소 */
+  }
+
+  /* 3. 카테고리 탭 작게 만들기 */
+  .category-tabs {
+    gap: 5px; /* 간격 좁히기 */
+    flex-wrap: wrap; /* 탭이 많으면 다음 줄로 넘김 */
+  }
+
+  .tab-btn {
+    padding: 8px 15px; /* 버튼 뚱뚱한 것 줄이기 */
+    font-size: 0.9rem; /* 글씨 작게 */
+  }
+
+  /* 4. 상품 목록: 모바일에서는 2개씩 보기 (가시성 확보) */
+  .product-grid {
+    grid-template-columns: repeat(2, 1fr) !important; /* 강제로 2열로 변경 */
+    gap: 10px; /* 상품 사이 간격 좁히기 */
+  }
+
+  /* 5. 상품 카드 내부 다이어트 */
+  .product-card {
+    padding: 10px; /* 카드 안쪽 여백 줄이기 */
+  }
+
+  .product-img {
+    width: 60px; /* 이미지 크기 줄이기 */
+    height: 60px;
+    font-size: 1.5rem; /* 아이콘 크기 줄이기 */
+  }
+
+  .product-info h3 {
+    font-size: 1rem; /* 상품명 작게 */
+    margin: 5px 0;
+  }
+
+  /* 6. 더하기/빼기 버튼 최적화 */
+  .count-controls {
+    gap: 8px;
+    padding: 3px 5px;
+  }
+
+  .control-btn {
+    width: 30px;
+    height: 30px;
+    font-size: 1rem;
+  }
+  
+  .count-display {
+    font-size: 1.2rem;
+  }
+}
 }

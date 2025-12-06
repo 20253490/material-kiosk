@@ -39,7 +39,7 @@ function App() {
       { id: 'm5', category: '부자재', name: '14oz 아이스컵', count: 100, icon: '🥤' },
       { id: 'm6', category: '부자재', name: '종이 빨대', count: 200, icon: '📏' },
     ];
-    if (confirm("모든 데이터를 초기값으로 되돌리시겠습니까?")) {
+    if (confirm("데이터를 초기화 하시겠습니까?")) {
       for (const item of initialData) {
         await setDoc(doc(db, "materials", item.id), item);
       }
