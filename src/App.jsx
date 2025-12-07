@@ -8,19 +8,18 @@ import * as XLSX from 'xlsx'
 function App() {
   const [materials, setMaterials] = useState([]);
   
-  // 1. 최상위 분류 (시트 구분)
-  const [currentSheet, setCurrentSheet] = useState('전기자재');
-  
-  // 2. 대분류 (탭 1단계)
+  // 메인 화면 탭 상태
+  const [currentSheet, setCurrentSheet] = useState('전기');
   const [currentMajor, setCurrentMajor] = useState('전체');
-
-  // 3. [신규] 소분류 (탭 2단계)
   const [currentMinor, setCurrentMinor] = useState('전체');
   
+  // 현황판 내부 탭 상태 [신규]
+  const [statusTab, setStatusTab] = useState('전체'); // '전체', '전기', '자동화'
+
   const [searchTerm, setSearchTerm] = useState('');
   
   const [newItem, setNewItem] = useState({
-    type: '전기자재', major: '', minor: '', code: '', name: '', price: '', icon: ''
+    type: '전기', major: '', minor: '', code: '', name: '', price: '', icon: ''
   });
   
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -39,7 +38,6 @@ function App() {
     return () => unsubscribe();
   }, []);
 
-  // 대분류가 바뀌면 소분류는 '전체'로 초기화 (중요!)
   useEffect(() => {
     setCurrentMinor('전체');
   }, [currentMajor, currentSheet]);
@@ -68,7 +66,6 @@ function App() {
     });
 
     alert(`'${newItem.name}' 등록 완료!`);
-    // 연속 입력을 위해 대분류/소분류는 남겨둠
     setNewItem({ ...newItem, name: '', code: '', price: '' }); 
   };
 
@@ -80,7 +77,7 @@ function App() {
 
   const downloadExcel = () => {
     const wb = XLSX.utils.book_new();
-    const sheets = ['전기자재', '자동화자재'];
+    const sheets = ['전기', '자동화'];
 
     sheets.forEach(sheetName => {
       const data = materials.filter(m => m.type === sheetName).map(item => ({
@@ -102,42 +99,52 @@ function App() {
     XLSX.writeFile(wb, `자재현황_${date}.xlsx`);
   };
 
-  // --- 데이터 가공 및 필터링 ---
-
-  // 1. 현재 시트 데이터
+  // --- 데이터 가공 ---
   const sheetMaterials = materials.filter(item => item.type === currentSheet);
-
-  // 2. 대분류 목록 추출 (중복제거)
   const majorCategories = ['전체', ...new Set(sheetMaterials.map(m => m.major))];
-
-  // 3. [신규] 소분류 목록 추출 (현재 선택된 대분류에 속한 것만!)
   const minorCategories = currentMajor === '전체' 
-    ? [] // 대분류가 전체면 소분류 탭 안보여줌 (너무 많아서)
+    ? [] 
     : ['전체', ...new Set(sheetMaterials.filter(m => m.major === currentMajor).map(m => m.minor).filter(Boolean))]; 
-    // filter(Boolean)은 빈칸 제외
 
-  // 4. 최종 리스트 필터링
   const filteredMaterials = sheetMaterials.filter(item => {
     const majorMatch = currentMajor === '전체' || item.major === currentMajor;
-    const minorMatch = currentMinor === '전체' || item.minor === currentMinor; // 소분류 필터
+    const minorMatch = currentMinor === '전체' || item.minor === currentMinor;
     const searchMatch = 
       item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
       (item.code && item.code.toLowerCase().includes(searchTerm.toLowerCase()));
-    
     return majorMatch && minorMatch && searchMatch;
   });
 
-  const calculateTotalValue = () => {
-    return materials.reduce((sum, item) => sum + ((item.price || 0) * item.count), 0);
-  };
   const formatMoney = (num) => (num || 0).toLocaleString();
 
-  // [신규] 등록 폼에서 쓸 '기존 목록' 추출 (자동완성용)
-  // 현재 시트에 있는 모든 대분류
+  // 자동완성용 목록
   const existingMajors = [...new Set(materials.filter(m => m.type === newItem.type).map(m => m.major))];
-  // 현재 선택된 대분류에 있는 소분류들
   const existingMinors = [...new Set(materials.filter(m => m.type === newItem.type && m.major === newItem.major).map(m => m.minor))];
 
+  // [신규] 현황판용 데이터 필터링 & 합계 계산
+  const getStatusData = () => {
+    let data = materials;
+    if (statusTab !== '전체') {
+      data = materials.filter(item => item.type === statusTab);
+    }
+    return data;
+  };
+
+  const statusData = getStatusData();
+  const totalStatusValue = statusData.reduce((sum, item) => sum + ((item.price || 0) * item.count), 0);
+
+  // 샘플 데이터
+  const initSampleData = async () => {
+    if(!confirm("샘플 데이터를 추가할까요?")) return;
+    const samples = [
+      { type: '전기', major: '차단기', minor: '배선용(800A)', code: 'ELB-800', name: '메인 차단기', price: 150000, icon: '⚡', count: 2 },
+      { type: '전기', major: '마그네트', minor: 'MC-22b', code: 'MC-22', name: '마그네트', price: 25000, icon: '🧲', count: 10 },
+      { type: '자동화', major: 'PLC', minor: 'XGK-CPU', code: 'XGK-CPUN', name: 'LS PLC CPU', price: 350000, icon: '🖥️', count: 1 },
+      { type: '자동화', major: '센서', minor: '근접센서', code: 'PR12-4DN', name: '근접센서', price: 12000, icon: '📡', count: 20 },
+    ];
+    for (const item of samples) { await addDoc(collection(db, "materials"), item); }
+    alert("완료!");
+  }
 
   return (
     <div className="app-container">
@@ -153,54 +160,35 @@ function App() {
           <button className="excel-btn" onClick={downloadExcel}>
             엑셀 ⬇️
           </button>
+           <button onClick={initSampleData} style={{background:'#999', border:'none', borderRadius:'5px', color:'white', cursor:'pointer', padding:'8px 12px'}}>샘플</button>
         </div>
       </header>
 
-      {/* 1. 시트 탭 */}
+      {/* 시트 탭 */}
       <div className="sheet-tabs">
-        <button className={`sheet-btn ${currentSheet === '전기자재' ? 'active' : ''}`} onClick={() => setCurrentSheet('전기자재')}>⚡ 전기자재</button>
-        <button className={`sheet-btn ${currentSheet === '자동화자재' ? 'active' : ''}`} onClick={() => setCurrentSheet('자동화자재')}>🤖 자동화자재</button>
+        <button className={`sheet-btn ${currentSheet === '전기' ? 'active' : ''}`} onClick={() => setCurrentSheet('전기')}>⚡ 전기</button>
+        <button className={`sheet-btn ${currentSheet === '자동화' ? 'active' : ''}`} onClick={() => setCurrentSheet('자동화')}>🤖 자동화</button>
       </div>
 
       <div className="search-bar">
         <input type="text" placeholder="🔍 품명 또는 코드 검색..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
       </div>
 
-      {/* 등록 폼 (자동완성 기능 추가됨!) */}
       {isFormOpen && (
         <div className="add-form">
           <div className="form-row">
              <label>구분:</label>
              <select value={newItem.type} onChange={(e) => setNewItem({...newItem, type: e.target.value, major: '', minor: ''})}>
-               <option value="전기자재">전기자재</option>
-               <option value="자동화자재">자동화자재</option>
+               <option value="전기">전기</option>
+               <option value="자동화">자동화</option>
              </select>
           </div>
-          
           <div className="form-row">
-            {/* 대분류 자동완성 입력 */}
-            <input 
-              list="major-options" 
-              placeholder="대분류 (선택 또는 입력)" 
-              value={newItem.major} 
-              onChange={(e) => setNewItem({...newItem, major: e.target.value})} 
-            />
-            <datalist id="major-options">
-              {existingMajors.map(m => <option key={m} value={m} />)}
-            </datalist>
-
-            {/* 소분류 자동완성 입력 */}
-            <input 
-              list="minor-options" 
-              placeholder="소분류 (선택 또는 입력)" 
-              value={newItem.minor} 
-              onChange={(e) => setNewItem({...newItem, minor: e.target.value})} 
-            />
-            <datalist id="minor-options">
-              {existingMinors.map(m => <option key={m} value={m} />)}
-            </datalist>
+            <input list="major-options" placeholder="대분류" value={newItem.major} onChange={(e) => setNewItem({...newItem, major: e.target.value})} />
+            <datalist id="major-options">{existingMajors.map(m => <option key={m} value={m} />)}</datalist>
+            <input list="minor-options" placeholder="소분류" value={newItem.minor} onChange={(e) => setNewItem({...newItem, minor: e.target.value})} />
+            <datalist id="minor-options">{existingMinors.map(m => <option key={m} value={m} />)}</datalist>
           </div>
-
           <div className="form-row">
             <input type="text" placeholder="품목코드" value={newItem.code} onChange={(e) => setNewItem({...newItem, code: e.target.value})} />
             <input type="text" placeholder="품명" value={newItem.name} onChange={(e) => setNewItem({...newItem, name: e.target.value})} />
@@ -213,70 +201,74 @@ function App() {
         </div>
       )}
 
-      {/* 2. 대분류 탭 */}
+      {/* 대분류/소분류 탭 */}
       <nav className="category-tabs">
         {majorCategories.map(cat => (
-          <button 
-            key={cat} 
-            className={`tab-btn ${currentMajor === cat ? 'active' : ''}`}
-            onClick={() => setCurrentMajor(cat)}
-          >
-            {cat}
-          </button>
+          <button key={cat} className={`tab-btn ${currentMajor === cat ? 'active' : ''}`} onClick={() => setCurrentMajor(cat)}>{cat}</button>
         ))}
       </nav>
-
-      {/* 3. [신규] 소분류 탭 (대분류 선택시에만 보임) */}
       {currentMajor !== '전체' && minorCategories.length > 0 && (
         <nav className="minor-tabs">
           {minorCategories.map(sub => (
-            <button 
-              key={sub} 
-              className={`sub-tab-btn ${currentMinor === sub ? 'active' : ''}`}
-              onClick={() => setCurrentMinor(sub)}
-            >
-              {sub}
-            </button>
+            <button key={sub} className={`sub-tab-btn ${currentMinor === sub ? 'active' : ''}`} onClick={() => setCurrentMinor(sub)}>{sub}</button>
           ))}
         </nav>
       )}
 
-      {/* 리스트 & 모달 (기존 동일) */}
+      {/* [수정] 현황판 모달 (탭 추가 + 헤더/푸터 고정) */}
       {isStatusOpen && (
         <div className="modal-overlay" onClick={() => setIsStatusOpen(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>📊 전체 재고 자산 현황</h2>
+              <h2>📊 재고 자산 현황표</h2>
               <button className="close-btn" onClick={() => setIsStatusOpen(false)}>✖</button>
             </div>
-            <div className="table-container">
-              <table className="status-table">
+            
+            {/* 현황판 내부 탭 */}
+            <div className="status-tabs">
+              {['전체', '전기', '자동화'].map(tab => (
+                <button 
+                  key={tab} 
+                  className={`status-tab-btn ${statusTab === tab ? 'active' : ''}`}
+                  onClick={() => setStatusTab(tab)}
+                >
+                  {tab} 현황
+                </button>
+              ))}
+            </div>
+
+            {/* 테이블 컨테이너 (스크롤 적용 영역) */}
+            <div className="table-wrapper">
+              <table className="status-table fixed-header">
                 <thead>
-                  <tr><th>구분</th><th>대분류</th><th>소분류/품명</th><th>단가</th><th>수량</th><th>금액</th></tr>
+                  <tr><th>구분</th><th>대분류</th><th>품명</th><th>수량</th><th>금액</th></tr>
                 </thead>
                 <tbody>
-                  {materials.map(item => (
+                  {statusData.map(item => (
                     <tr key={item.id}>
                       <td>{item.type}</td>
                       <td>{item.major}</td>
                       <td style={{textAlign:'left'}}>
-                        <span style={{color:'#666', fontSize:'0.85rem'}}> [{item.minor}] </span>
-                        <b>{item.name}</b>
+                        <div style={{fontWeight:'bold'}}>{item.name}</div>
+                        <div style={{fontSize:'0.75rem', color:'#888'}}>{item.minor}</div>
                       </td>
-                      <td style={{textAlign:'right'}}>{formatMoney(item.price)}</td>
                       <td>{item.count}</td>
                       <td style={{textAlign:'right', fontWeight:'bold'}}>{formatMoney((item.price||0)*item.count)}</td>
                     </tr>
                   ))}
+                  {statusData.length === 0 && (
+                    <tr><td colSpan="5" style={{padding:'20px', color:'#999'}}>데이터가 없습니다.</td></tr>
+                  )}
                 </tbody>
-                <tfoot>
-                  <tr>
-                    <td colSpan="5" style={{textAlign:'right', fontWeight:'bold'}}>합계 :</td>
-                    <td style={{color:'#d32f2f', fontWeight:'bold'}}>{formatMoney(calculateTotalValue())}원</td>
-                  </tr>
-                </tfoot>
               </table>
             </div>
+
+            {/* 고정된 합계 바닥글 (테이블 밖으로 뺌) */}
+            <div className="modal-footer">
+              <div className="footer-label">{statusTab} 자산 합계</div>
+              <div className="footer-value">{formatMoney(totalStatusValue)}원</div>
+            </div>
+
           </div>
         </div>
       )}
