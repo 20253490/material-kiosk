@@ -1,199 +1,75 @@
-/* src/App.css (수정 완료) */
+/* src/App.css */
+html { overflow-y: scroll; }
+#root { max-width: 1280px; margin: 0 auto; padding: 2rem; text-align: center; font-family: 'Apple SD Gothic Neo', sans-serif; }
 
-/* 스크롤바를 항상 강제로 표시해서 화면이 좌우로 흔들리는 것을 막아줍니다 */
-html {
-  overflow-y: scroll;
-}
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-  font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
-}
+header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px solid #eee; }
+h1 { font-size: 1.8rem; margin: 0; color: #333; }
+.header-buttons { display: flex; gap: 8px; }
+.header-buttons button { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; font-size: 0.9rem; }
+.icon-btn { background-color: #555; }
+.status-btn { background-color: #7b1fa2; }
+.excel-btn { background-color: #217346; }
 
-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 30px;
-  padding-bottom: 20px;
-  border-bottom: 2px solid #eee;
-}
+/* 시트 선택 탭 */
+.sheet-tabs { display: flex; margin-bottom: 15px; border-bottom: 2px solid #ddd; }
+.sheet-btn { flex: 1; padding: 15px; background: none; border: none; font-size: 1.2rem; font-weight: bold; color: #888; cursor: pointer; border-bottom: 4px solid transparent; transition: 0.3s; }
+.sheet-btn:hover { background-color: #f9f9f9; }
+.sheet-btn.active { color: #2196f3; border-bottom: 4px solid #2196f3; }
 
-h1 {
-  font-size: 2rem;
-  color: #333;
-  margin: 0;
-}
+.search-bar { margin-bottom: 20px; }
+.search-bar input { width: 100%; max-width: 400px; padding: 10px; border: 1px solid #ddd; border-radius: 20px; text-align: center; outline: none; }
+.search-bar input:focus { border-color: #2196f3; }
 
-.excel-btn {
-  background-color: #217346; /* 엑셀 색상 */
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: bold;
-}
+/* 등록 폼 */
+.add-form { background: #f5f5f5; padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: left; }
+.form-row { display: flex; gap: 10px; margin-bottom: 10px; }
+.add-form input, .add-form select { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
+.add-btn { width: 100%; padding: 12px; background: #2196f3; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
 
-/* 카테고리 탭 영역 */
-.category-tabs {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 30px;
-  justify-content: center;
-}
+/* 1단계 탭 (대분류) */
+.category-tabs { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; justify-content: center; }
+.tab-btn { padding: 8px 16px; background: #eee; border: none; border-radius: 20px; cursor: pointer; font-size: 0.95rem; }
+.tab-btn.active { background: #333; color: white; font-weight: bold; }
 
-.tab-btn {
-  padding: 10px 25px;
-  background-color: #f0f0f0;
-  border: none;
-  border-radius: 20px;
-  font-size: 1.1rem;
-  cursor: pointer;
-  transition: 0.3s;
-}
+/* 2단계 탭 (소분류) - 스타일 다르게 */
+.minor-tabs { display: flex; gap: 5px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center; background: #f0f4f8; padding: 10px; border-radius: 10px; }
+.sub-tab-btn { padding: 6px 12px; background: white; border: 1px solid #ddd; border-radius: 15px; cursor: pointer; font-size: 0.85rem; color: #555; }
+.sub-tab-btn.active { background: #2196f3; color: white; border-color: #2196f3; font-weight: bold; }
 
-.tab-btn.active {
-  background-color: #3b82f6; /* 활성화된 탭 색상 (파랑) */
-  color: white;
-  font-weight: bold;
-}
+/* 상품 카드 */
+.product-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; min-height: 50vh; align-content: start; }
+.product-card { position: relative; border: 1px solid #eee; border-radius: 12px; padding: 15px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; }
+.product-img { width: 80px; height: 80px; background: #f9f9f9; border-radius: 50%; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; font-size: 2rem; overflow: hidden; }
+.product-img img { width: 100%; height: 100%; object-fit: cover; }
 
-/* 상품 그리드 영역 (키오스크 핵심) */
-.product-grid {
-  display: grid;
-  
-  /* [수정됨] auto-fill 대신 숫자 3을 넣어서 무조건 3열로 고정! */
-  grid-template-columns: repeat(3, 1fr); 
-  
-  gap: 20px;
-  min-height: 60vh;
-  align-content: start;
-}
+.product-info { width: 100%; }
+/* 대분류 뱃지 */
+.badge { background: #333; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; display: inline-block; margin-right: 5px; margin-bottom: 5px; }
+/* 소분류 뱃지 */
+.badge-minor { background: #e3f2fd; color: #1565c0; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; display: inline-block; margin-bottom: 5px; }
 
-.product-card {
-  border: 1px solid #ddd;
-  border-radius: 15px;
-  padding: 15px;
-  background: white;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
+h3 { margin: 5px 0; font-size: 1.1rem; color: #333; word-break: keep-all; }
+.code-text { font-size: 0.75rem; color: #999; margin: 0; font-family: monospace; }
+.price-tag { font-weight: bold; color: #2e7d32; margin-top: 5px; font-size: 0.95rem; }
 
-.product-img {
-  width: 100px;
-  height: 100px;
-  background-color: #eee;
-  border-radius: 50%;
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2rem;
-}
+.count-controls { display: flex; align-items: center; gap: 10px; margin-top: 10px; background: #f5f5f5; padding: 4px 10px; border-radius: 8px; }
+.control-btn { width: 30px; height: 30px; border-radius: 50%; border: none; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.minus { background: #ffcdd2; color: #c62828; }
+.plus { background: #c8e6c9; color: #2e7d32; }
+.count-display { font-size: 1.3rem; font-weight: bold; min-width: 25px; }
+.delete-btn { position: absolute; top: 8px; right: 8px; background: none; border: none; color: #ddd; font-size: 1.2rem; cursor: pointer; }
+.delete-btn:hover { color: red; }
 
-.product-info h3 {
-  margin: 10px 0;
-  font-size: 1.2rem;
-}
+/* 모달 */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; display: flex; justify-content: center; align-items: center; }
+.modal-content { background: white; width: 95%; max-width: 800px; max-height: 85vh; border-radius: 12px; padding: 20px; overflow-y: auto; }
+.modal-header { display: flex; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+.status-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.status-table th { background: #f5f5f5; padding: 10px; border-bottom: 2px solid #ddd; }
+.status-table td { padding: 10px; border-bottom: 1px solid #eee; }
 
-.count-controls {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  margin-top: 10px;
-  background: #f8f9fa;
-  padding: 5px 10px;
-  border-radius: 10px;
-}
-
-.control-btn {
-  width: 35px;
-  height: 35px;
-  border-radius: 50%;
-  border: none;
-  font-size: 1.2rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.minus { background-color: #ffadad; color: #a71d2a; }
-.plus { background-color: #baffc9; color: #1d8033; }
-
-.count-display {
-  font-size: 1.5rem;
-  font-weight: bold;
-  min-width: 30px;
-} /* <--- 아까 여기에 닫는 괄호가 없어서 에러가 났던 겁니다! */
-
-
-/* --- 반응형 디자인 (모바일 최적화) --- */
-
-/* 화면 너비가 768px 이하(태블릿, 스마트폰)일 때 적용되는 규칙 */
 @media (max-width: 768px) {
-  
-  /* 1. 전체 여백 줄이기 */
-  #root {
-    padding: 1rem;
-  }
-
-  /* 2. 제목 크기 줄이기 */
-  h1 {
-    font-size: 1.5rem;
-  }
-
-  /* 3. 카테고리 탭 작게 만들기 */
-  .category-tabs {
-    gap: 5px; 
-    flex-wrap: wrap;
-  }
-
-  .tab-btn {
-    padding: 8px 15px;
-    font-size: 0.9rem;
-  }
-
-  /* 4. 상품 목록: 모바일에서는 2개씩 보기 (가시성 확보) */
-  .product-grid {
-    grid-template-columns: repeat(2, 1fr) !important; /* 강제로 2열로 변경 */
-    gap: 10px;
-  }
-
-  /* 5. 상품 카드 내부 다이어트 */
-  .product-card {
-    padding: 10px;
-  }
-
-  .product-img {
-    width: 60px;
-    height: 60px;
-    font-size: 1.5rem;
-  }
-
-  .product-info h3 {
-    font-size: 1rem;
-    margin: 5px 0;
-  }
-
-  /* 6. 더하기/빼기 버튼 최적화 */
-  .count-controls {
-    gap: 8px;
-    padding: 3px 5px;
-  }
-
-  .control-btn {
-    width: 30px;
-    height: 30px;
-    font-size: 1rem;
-  }
-  
-  .count-display {
-    font-size: 1.2rem;
-  }
+  .product-grid { grid-template-columns: repeat(2, 1fr); }
+  .add-form .form-row { flex-direction: column; gap: 5px; }
+  .status-table th, .status-table td { padding: 6px; font-size: 0.8rem; }
 }
