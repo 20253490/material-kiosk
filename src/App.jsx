@@ -1,8 +1,8 @@
 // src/App.jsx
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './App.css'
 import { db } from './firebase'
-import { collection, onSnapshot, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore'
+import { collection, onSnapshot, doc, updateDoc, addDoc, deleteDoc, query, where, getDocs } from 'firebase/firestore'
 import * as XLSX from 'xlsx'
 
 function App() {
@@ -12,10 +12,8 @@ function App() {
   const [currentSheet, setCurrentSheet] = useState('전기');
   const [currentMajor, setCurrentMajor] = useState('전체');
   const [currentMinor, setCurrentMinor] = useState('전체');
+  const [statusTab, setStatusTab] = useState('전체');
   
-  // 현황판 내부 탭 상태 [신규]
-  const [statusTab, setStatusTab] = useState('전체'); // '전체', '전기', '자동화'
-
   const [searchTerm, setSearchTerm] = useState('');
   
   const [newItem, setNewItem] = useState({
@@ -24,6 +22,10 @@ function App() {
   
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isStatusOpen, setIsStatusOpen] = useState(false);
+  
+  // [신규] 업로드 로딩 상태 및 파일 인풋 참조
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
   // DB 실시간 연동
   useEffect(() => {
@@ -50,19 +52,13 @@ function App() {
 
   const handleAdd = async () => {
     if (!newItem.major || !newItem.name) return alert("대분류와 품명을 입력해주세요!");
-    
     const iconValue = newItem.icon.trim() === '' ? '📦' : newItem.icon;
     const priceValue = newItem.price ? parseInt(newItem.price) : 0;
 
     await addDoc(collection(db, "materials"), {
-      type: newItem.type,
-      major: newItem.major,
-      minor: newItem.minor,
-      code: newItem.code,
-      name: newItem.name,
-      price: priceValue,
-      icon: iconValue,
-      count: 0
+      type: newItem.type, major: newItem.major, minor: newItem.minor,
+      code: newItem.code, name: newItem.name, price: priceValue,
+      icon: iconValue, count: 0
     });
 
     alert(`'${newItem.name}' 등록 완료!`);
@@ -87,7 +83,9 @@ function App() {
         '품명': item.name,
         '단가': item.price,
         '현재고': item.count,
-        '재고금액': (item.price || 0) * item.count
+        // '재고금액'은 수식이라 업로드 때는 필요 없지만 보기 좋으라고 넣음
+        '재고금액': (item.price || 0) * item.count,
+        '이미지': item.icon // 업로드 시 이미지 유지를 위해 추가
       }));
       if(data.length > 0) {
         const ws = XLSX.utils.json_to_sheet(data);
@@ -97,6 +95,90 @@ function App() {
 
     const date = new Date().toISOString().slice(0,10).replace(/-/g,"");
     XLSX.writeFile(wb, `자재현황_${date}.xlsx`);
+  };
+
+  // [신규] 엑셀 업로드 처리 함수 (핵심 로직)
+const handleExcelUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsUploading(true);
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const data = evt.target.result;
+        const workbook = XLSX.read(data, { type: 'binary' });
+        
+        let successCount = 0;
+        let skipCount = 0;
+        
+        for (const sheetName of workbook.SheetNames) {
+            // 1. 시트 이름 확인 (전기/자동화 포함 여부)
+            let targetType = '';
+            if (sheetName.includes('전기')) targetType = '전기';
+            else if (sheetName.includes('자동화')) targetType = '자동화';
+            else continue; // 관련 없는 시트는 패스
+
+            // 2. 데이터 읽기
+            const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+            for (const row of rows) {
+                // 3. 필수값 체크 (품명이 없으면 건너뜀)
+                if (!row['품명']) {
+                  skipCount++;
+                  continue;
+                }
+
+                // 4. 데이터 정제 (쉼표 제거, 공백 제거 등 안전장치 추가)
+                const name = String(row['품명']).trim(); // 앞뒤 공백 제거
+                const major = row['대분류'] ? String(row['대분류']).trim() : '미분류';
+                const minor = row['소분류'] ? String(row['소분류']).trim() : '';
+                const code = row['품목코드'] ? String(row['품목코드']).trim() : '';
+                const icon = row['이미지'] || '📦';
+
+                // [중요] 숫자에 쉼표(,)가 있어도 처리하도록 수정
+                // 예: "1,000" -> "1000" -> 1000
+                const parseSafeNum = (val) => {
+                  if (!val) return 0;
+                  const strVal = String(val).replace(/,/g, '').trim(); // 쉼표 제거
+                  const parsed = parseInt(strVal);
+                  return isNaN(parsed) ? 0 : parsed; // 숫자가 아니면 0
+                };
+
+                const price = parseSafeNum(row['단가']);
+                const count = parseSafeNum(row['현재고']);
+
+                // 5. DB 업데이트 또는 추가
+                const existingItem = materials.find(m => m.name === name && m.type === targetType);
+
+                if (existingItem) {
+                    // 이미 있으면 -> 정보 업데이트
+                    const itemRef = doc(db, "materials", existingItem.id);
+                    await updateDoc(itemRef, {
+                        major, minor, code, price, count, icon
+                    });
+                } else {
+                    // 없으면 -> 신규 등록
+                    await addDoc(collection(db, "materials"), {
+                        type: targetType,
+                        major, minor, code, name, price, count, icon
+                    });
+                }
+                successCount++;
+            }
+        }
+        alert(`✅ 처리 완료!\n- 성공: ${successCount}건\n- 건너뜀(품명없음): ${skipCount}건`);
+        
+      } catch (error) {
+        console.error("업로드 에러:", error);
+        alert("❌ 엑셀 읽기 실패! 파일 형식을 확인해주세요.");
+      } finally {
+        setIsUploading(false);
+        if(fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+    reader.readAsBinaryString(file);
   };
 
   // --- 데이터 가공 ---
@@ -116,38 +198,27 @@ function App() {
   });
 
   const formatMoney = (num) => (num || 0).toLocaleString();
-
-  // 자동완성용 목록
   const existingMajors = [...new Set(materials.filter(m => m.type === newItem.type).map(m => m.major))];
   const existingMinors = [...new Set(materials.filter(m => m.type === newItem.type && m.major === newItem.major).map(m => m.minor))];
 
-  // [신규] 현황판용 데이터 필터링 & 합계 계산
   const getStatusData = () => {
     let data = materials;
-    if (statusTab !== '전체') {
-      data = materials.filter(item => item.type === statusTab);
-    }
+    if (statusTab !== '전체') data = materials.filter(item => item.type === statusTab);
     return data;
   };
-
   const statusData = getStatusData();
   const totalStatusValue = statusData.reduce((sum, item) => sum + ((item.price || 0) * item.count), 0);
 
-  // 샘플 데이터
-  const initSampleData = async () => {
-    if(!confirm("샘플 데이터를 추가할까요?")) return;
-    const samples = [
-      { type: '전기', major: '차단기', minor: '배선용(800A)', code: 'ELB-800', name: '메인 차단기', price: 150000, icon: '⚡', count: 2 },
-      { type: '전기', major: '마그네트', minor: 'MC-22b', code: 'MC-22', name: '마그네트', price: 25000, icon: '🧲', count: 10 },
-      { type: '자동화', major: 'PLC', minor: 'XGK-CPU', code: 'XGK-CPUN', name: 'LS PLC CPU', price: 350000, icon: '🖥️', count: 1 },
-      { type: '자동화', major: '센서', minor: '근접센서', code: 'PR12-4DN', name: '근접센서', price: 12000, icon: '📡', count: 20 },
-    ];
-    for (const item of samples) { await addDoc(collection(db, "materials"), item); }
-    alert("완료!");
-  }
-
   return (
     <div className="app-container">
+      {/* 로딩 오버레이 */}
+      {isUploading && (
+        <div className="loading-overlay">
+          <div className="loading-spinner"></div>
+          <p>엑셀 데이터 처리 중...</p>
+        </div>
+      )}
+
       <header>
         <h1>🏭 자재 관리 시스템</h1>
         <div className="header-buttons">
@@ -157,10 +228,22 @@ function App() {
           <button className="status-btn" onClick={() => setIsStatusOpen(true)}>
             현황 📊
           </button>
+          
+          {/* [신규] 엑셀 업로드 버튼 */}
+          <input 
+            type="file" 
+            accept=".xlsx, .xls" 
+            style={{display:'none'}} 
+            ref={fileInputRef}
+            onChange={handleExcelUpload}
+          />
+          <button className="upload-btn" onClick={() => fileInputRef.current.click()}>
+            업로드 ⬆️
+          </button>
+
           <button className="excel-btn" onClick={downloadExcel}>
             엑셀 ⬇️
           </button>
-           <button onClick={initSampleData} style={{background:'#999', border:'none', borderRadius:'5px', color:'white', cursor:'pointer', padding:'8px 12px'}}>샘플</button>
         </div>
       </header>
 
@@ -201,7 +284,6 @@ function App() {
         </div>
       )}
 
-      {/* 대분류/소분류 탭 */}
       <nav className="category-tabs">
         {majorCategories.map(cat => (
           <button key={cat} className={`tab-btn ${currentMajor === cat ? 'active' : ''}`} onClick={() => setCurrentMajor(cat)}>{cat}</button>
@@ -215,7 +297,6 @@ function App() {
         </nav>
       )}
 
-      {/* [수정] 현황판 모달 (탭 추가 + 헤더/푸터 고정) */}
       {isStatusOpen && (
         <div className="modal-overlay" onClick={() => setIsStatusOpen(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -223,21 +304,11 @@ function App() {
               <h2>📊 재고 자산 현황표</h2>
               <button className="close-btn" onClick={() => setIsStatusOpen(false)}>✖</button>
             </div>
-            
-            {/* 현황판 내부 탭 */}
             <div className="status-tabs">
               {['전체', '전기', '자동화'].map(tab => (
-                <button 
-                  key={tab} 
-                  className={`status-tab-btn ${statusTab === tab ? 'active' : ''}`}
-                  onClick={() => setStatusTab(tab)}
-                >
-                  {tab} 현황
-                </button>
+                <button key={tab} className={`status-tab-btn ${statusTab === tab ? 'active' : ''}`} onClick={() => setStatusTab(tab)}>{tab} 현황</button>
               ))}
             </div>
-
-            {/* 테이블 컨테이너 (스크롤 적용 영역) */}
             <div className="table-wrapper">
               <table className="status-table fixed-header">
                 <thead>
@@ -256,19 +327,14 @@ function App() {
                       <td style={{textAlign:'right', fontWeight:'bold'}}>{formatMoney((item.price||0)*item.count)}</td>
                     </tr>
                   ))}
-                  {statusData.length === 0 && (
-                    <tr><td colSpan="5" style={{padding:'20px', color:'#999'}}>데이터가 없습니다.</td></tr>
-                  )}
+                  {statusData.length === 0 && <tr><td colSpan="5" style={{padding:'20px', color:'#999'}}>데이터가 없습니다.</td></tr>}
                 </tbody>
               </table>
             </div>
-
-            {/* 고정된 합계 바닥글 (테이블 밖으로 뺌) */}
             <div className="modal-footer">
               <div className="footer-label">{statusTab} 자산 합계</div>
               <div className="footer-value">{formatMoney(totalStatusValue)}원</div>
             </div>
-
           </div>
         </div>
       )}
